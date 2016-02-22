@@ -2,8 +2,9 @@ package lib
 
 import (
 	"fmt"
+	"time"
 	log "github.com/Sirupsen/logrus"
-	"github.com/fpgeek/gomarathon"
+	"github.com/vixns/gomarathon"
 )
 
 type Orchestrator struct {
@@ -15,10 +16,11 @@ type Orchestrator struct {
 	Cpu         float64
 	Client      *gomarathon.Client
 	App         *gomarathon.Application
+	Sync        bool
 }
 
 func (s *Orchestrator) Check() error {
-	println("service check ", s.ApiHost)
+	log.Debugf("service check %s\n", s.ApiHost)
 
 	if s.ApiHost == "" {
 		return fmt.Errorf("MARATHON_URL env is missing")
@@ -33,6 +35,20 @@ func (s *Orchestrator) Check() error {
 	}
 
 	return nil
+}
+
+func (s *Orchestrator) HasDeploymentID (deploymentID string) (ret bool, err error) {
+	if deployments, err := s.Client.GetDeployments(); err != nil {
+		return false, err
+	} else {
+		log.Debugf("deployments:  %#v\n", deployments)
+		for d := range deployments {
+			if  deployments[d].ID == deploymentID {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func (s *Orchestrator) Deploy() (deploymentID string, err error) {
@@ -51,15 +67,28 @@ func (s *Orchestrator) Deploy() (deploymentID string, err error) {
 		App.Container = s.App.Container
 		App.Container.Docker.Image = s.DockerImage
 	}
-
 	deploymentID, version, err := s.Client.UpdateApp(s.Service, App)
 	if err != nil {
 		return "", err
 	} else {
-		log.Debugf("deploymentID: %s\n", deploymentID)
-		log.Debugf("version: %s\n", version)
+		if s.Sync {
+			time.Sleep(2 * time.Second)
+			c := time.Tick(time.Second * 2)
+			for i := range c {
+				log.Debugf("tick: %s", i)
+				isDeploying, err := s.HasDeploymentID(deploymentID);
+				if err != nil {
+					return "", err
+				}
+				if !isDeploying {
+					time.Sleep(2 * time.Second)
+					break
+				}
+			}
+		} else {
+			println("deploymentID:", deploymentID)
+			log.Debugf("version: %s", version)
+		}
 		return deploymentID, err
 	}
-
-	return
 }
