@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/codegangsta/cli"
 	"github.com/yuzu-co/doploy/lib"
 	"log"
@@ -12,7 +11,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "doploy"
-	app.Version = "1.0.0"
+	app.Version = "1.0.1"
 	app.Usage = "Cli to update Marathon apps"
 	app.Commands = []cli.Command{
 		{
@@ -36,10 +35,13 @@ func main() {
 					Name:  "image",
 					Usage: "Set docker image",
 				},
+				cli.StringFlag{
+					Name:  "sync",
+					Usage: "Wait for deployment end",
+				},
 			},
 			Action: func(c *cli.Context) {
 				var service string = c.Args().First()
-				fmt.Println("update service: ", service)
 
 				o := lib.Orchestrator{
 					ApiHost: os.Getenv("MARATHON_URL"),
@@ -64,6 +66,10 @@ func main() {
 
 				if c.String("cpu") != "" {
 					o.Cpu, _ = strconv.ParseFloat(c.String("cpu"), 64)
+				}
+
+				if c.String("sync") != "" {
+					o.Sync = true;
 				}
 
 				o.Deploy()
