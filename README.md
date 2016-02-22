@@ -21,6 +21,9 @@ export MARATHON_URL=https://user@pass:your-marathon
 #update an app
 doploy update [service_name] --scale=1 --mem=200 --cpu=2
 
+#update an app, exit only when done, usefull for continuous deployment
+doploy update [service_name] --scale=1 --mem=200 --cpu=2 --sync=1
+
 #upgrade an image/tag with a public image
 doploy update [service_name] --image=mongo:3.1.8
 
